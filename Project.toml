@@ -1,0 +1,10 @@
+name = "compareLLLs"
+uuid = "edeaa559-8a3f-46a8-b81a-57f6918a6274"
+authors = ["Christian Peel <chris.peel@ieee.org>"]
+version = "0.1.0"
+
+[deps]
+Cxx = "a0b5b9ef-44b7-5148-a2d1-f6db19f3c3d2"
+LLLplus = "142c1900-a1c3-58ae-a66d-b187f9ca6423"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Nemo = "2edaba10-b0f1-5616-af89-8c11ac63239a"
