@@ -1,77 +1,79 @@
-# CompareLLLs
+# Comparing three LLL implementations
 
-
-This repo shows results from a few Monte-Carlo comparisons of
+This page shows results from a few Monte-Carlo comparisons of
 [LLL](https://en.wikipedia.org/wiki/Lenstra%E2%80%93Lenstra%E2%80%93Lov%C3%A1sz_lattice_basis_reduction_algorithm)
 lattice reduction code from
 [LLLplus](https://github.com/christianpeel/LLLplus.jl),
 [Nemo.jl](https://github.com/Nemocas/Nemo.jl), and the
-[fplll](https://github.com/fplll/fplll) C++ library. These simulations
-are done in Julia; LLLplus is written in native Julia, Nemo has a good
-Julia interface, and we use Cxx.jl to access the fplll library.
-We also comment briefly later on in this page on a few steps required
-to write a Julia wrapper around fplll.
+[fplll](https://github.com/fplll/fplll) library. The code
+controling the simulations is written in Julia; LLLplus is written in
+native Julia, Nemo has a Julia interface that wraps an LLL from the
+FLINT C library, and we use Cxx.jl to access the fplll C++ library.
+We also comment later on in this page on what might be required
+to write an easy-to-use Julia wrapper around fplll.
 
 ### Comparison Results
 
 The figures below show the time for execution of three different LLL
-algorithms, each which does a matrix decomposition:
+algorithms, with each configured to do a matrix-decomposition-style LLL:
 
 * The `lll` function from LLLplus,
 * The `lll_reduction` function from fplll, and
 * The `lll_with_transform` function from Nemo.
 
 The parameter `δ` was set to `0.99` for all three, with `η` fixed to
-`0.51` for fplll and Nemo. 
+`0.51` for fplll and Nemo. LLLplus and fplll can do operations on
+native 64-bit integers and arbitrary-precision integers using GMP,
+while Nemo appears to only work on GMP integers.
 
-![Time vs matrix size](timeVdim_20bits.png)
+![Time vs matrix size for Int64 bases](timeVdim_35bitsInt64.png)
 
-The first figure shows execution time as a function of matrix size.
-The x-axis shows the matrix size on a log scale; matrices of size `d =
-2 .^(1:.5:8)` where used. I.e. matrices from size `2` to `256`. Each
-matrix consists of uniformly random `20`-bit integers obtained from
-fplll's `gen_uniform` function. LLLplus and fplll can do operations on
-both native 64-bit integers, and arbitrary-precision integers using
-GMP, while Nemo appears to only work on GMP integers. So even though
-the bit sizes are small enough to use native 64-bit arithmetic, all
-three algorithms were passed matrices of GMP integers. The time shown
-for each size is the average over six random matrices.
+The first figure shows execution time as a function of matrix size for
+Int64 bases. The x-axis shows the matrix size on a log scale; matrices
+of size `d = 2 .^(2:7)` where used. I.e. matrices from size `4` to
+`128`. Each matrix consists of q-ary `35`-bit lattices generated with
+fplll's `gen_qary` function with `k=N/2`. For this
+initial plot, we show results for LLLplus and fplll when passed
+native-precision 64-bit integer bases. The time shown for each size is
+the average over eight random matrices. At the largest dimensions
+(128), these q-ary lattices are entering the area of cryptographic
+interest.
 
-Nemo is always the fastest, followed by fplll, and finally LLLplus is
-the slowest. It is surprising to me that Nemo is fastest, given that
-it is not focused on lattice tools. It's clear that Nemo is much
-faster than LLLplus, though they seem to have the same slope in this
-log-log plot, which implies the same polynomial exponent. Though not
-shown, a similar relationship between the times of LLLplus and fplll
-on matrices of 64-bit integers was found, though of course the timese
-are faster than on GMP integers.
+fplll is fastest, which is expected given that it is developed by
+academics who do research in lattice reduction. LLLplus is within a
+factor of 2.5 for the largest size (128) bases; i.e. LLLplus takes
+about 2.5 times longer than fplll.  This is good news, given that
+fplll uses the faster L2 (Cholesky-based) technique from Nguyen and
+Stele and has received significantly more attention.
 
-![Time vs number of bits](timeVnbits_Neq25.png)
+![Time vs matrix size for GMP bases](timeVdim_35bitsGMP.png)
 
-The second figure fixes the matrix size to `25x25`, and shows average
-time versus the bit depth, which is varied from `5` to `505` in
-increments of `50` bits. Again, Nemo is fastest, then fplll, while
-LLLplus is slowest. The curves are roughly flat, though Nemo's times
-do grow slowly with bit depth. 
+The next plot shows a similar test, except with GMP (BigInt) data. The
+same bit depth in `gen_qary` is used, though (of course) it could be
+larger. In this case Nemo is always the fastest, followed by fplll,
+and finally LLLplus is the slowest. One guess is that Nemo is so fast
+because it detects the lower precision (low bit-depth) data, and
+does part or all of the computation in native precision. The only
+option available with GMP data for fplll is the `proved` LLL
+technique; there is no `fast` technique as was used for native
+precision. It may be that the fplll authors have not attempted to
+make their code especially fast with arbitrary precision.
 
-### Generating the comparisons above
+![Time vs smallest norm for Int64 bases](timeVsmallest_25bitsGMP.png)
 
-CompareLLLs is not a useful Julia package, even though it has the
-start of the structure of one. If you want to generate the plots shown
-above, say using the code in the file `timeLLLs.jl`, then the
-following steps may be useful.
+One question that could arise in the "time-vs-basis size" plots above
+is what the quality of the basis is. In the final plot we show
+execution time vs the norm of the first vector in the reduced
+basis. This first vector is typically the smallest; its norm is an
+rough indication of the quality of the reduced basis. We show the norm
+averaged over eight random bases. Q-ary lattices are used, with depth
+`25` bits, and native-precision integers. The curve is created by
+varying the `δ` parameter from `.49` to `.99` in steps of `.05`; the
+larger times and smaller norms correspond to the largest `δ` values.
+fplll consistently out-performs LLLplus.
 
-* Download and compile fplll, which means you have to install GMP and MPFR.
-* Download or compile a [Julia](https://github.com/juliaLang/julia)
-  binary. It may be useful to compile with the `USE_SYSTEM_GMP` and
-  `USE_SYSTEM_MPFR` variables set to `1` in `Make.inc` so that Julia
-  and fplll use the same GMP and MPFR libraries.
-* Download this repo. If you don't want to change code in this
-  package, put it in a sibling directory to the fplll directory. If
-  you put it elsewhere, change the appropriate line at the beginning
-  of `timeLLLs.jl`.
-* Execute the code in `timeLLLs.jl`.
-
+Code to generate the plots shown above is in the file `timeLLLs.jl`,
+though it is possible that `Cxx.jl` may be tricky to use.
 
 ### Making a polished Julia wrapper of fplll
 
@@ -88,7 +90,8 @@ thinking of building a polished `fplll.jl` package that provides a
 full interface to fplll--something on the same level as the Python
 library [fpylll](https://github.com/fplll/fpylll).
 
-* Decide whether you'll use Cxx.jl or
+* Decide whether you'll use
+  [Cxx.jl](https://github.com/JuliaInterop/Cxx.jl) or
   [CxxWrap.jl](https://github.com/JuliaInterop/CxxWrap.jl); CxxWrap.jl
   may require a bit more work, yet it appears more stable.  In Oct
   2019 Cxx.jl has 90 open issues on Github, and appears to be
@@ -106,5 +109,3 @@ library [fpylll](https://github.com/fplll/fpylll).
   they could be used directly by the core fplll lattice
   functions. I.e. do something like Nemo's `MatrixSpace`. 
   Implement appropriate operators, wrapper functions, and testing. 
-
-
