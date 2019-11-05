@@ -59,7 +59,7 @@ technique; there is no `fast` technique as was used for native
 precision. It may be that the fplll authors have not attempted to
 make their code especially fast with arbitrary precision.
 
-![Time vs smallest norm for Int64 bases](timeVsmallest_25bitsGMP.png)
+![Time vs smallest norm for Int64 bases](timeVsmallest_25bitsInt64.png)
 
 One question that could arise in the "time-vs-basis size" plots above
 is what the quality of the basis is. In the final plot we show
